@@ -82,6 +82,8 @@ var Upload = require('s3-uploader');
   * **object** `original`
     * **string** `awsImageAcl` - access control for AWS S3 upload (**example:** `private`)
 
+  * **function** `randomPath` - custom random path function
+
 #### AWS note
 > The `aws` object is passed directly to `aws-sdk`. You can add any of [these
 > options](http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#constructor_details)
