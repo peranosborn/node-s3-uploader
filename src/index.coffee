@@ -48,26 +48,34 @@ Upload = module.exports = (bucketName, @opts = {}) ->
 ##
 # Generate a random path on the form /xx/yy/zz
 ##
-Upload.prototype._getRandomPath = ->
-  input = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  res = []
+Upload.prototype._getRandomPath = (opts) ->
+  if opts.useRandomPath != null && opts.useRandomPath
 
-  for i in [1..3]
-    x = input[Math.floor((Math.random() * input.length))]
-    y = input[Math.floor((Math.random() * input.length))]
-    res.push x + y
+    input = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    res = []
 
-  return res.join '/'
+    for i in [1..3]
+      x = input[Math.floor((Math.random() * input.length))]
+      y = input[Math.floor((Math.random() * input.length))]
+      res.push x + y
+
+    path = res.join '/'
+
+  else
+    path = ''
+
+  return path
 
 ##
 # Generate a random avaiable path on the S3 bucket
 ##
 Upload.prototype._getDestPath = (prefix, callback) ->
   retry 5, (cb) =>
-    path = prefix + @_getRandomPath()
+    path = prefix + @_getRandomPath(_this.opts)
     @s3.listObjects Prefix: path, (err, data) ->
       return cb err if err
-      return cb null, path if data.Contents.length is 0
+      return cb null, path if data.Contents.length is 0   \
+        ||  !_this.opts.useRandomPath
       return cb new Error "Path #{path} not avaiable"
   , callback
 
@@ -149,11 +157,17 @@ Image.prototype.removeVersions = (cb, results) ->
 # Upload image version to S3
 ##
 Image.prototype._upload = (dest, version, cb) ->
+
+  filename = @upload.opts.fileName or ''
+  filename = filename.substr(0, filename.lastIndexOf('.')) or filename
+  filename = filename.replace(/([^a-z0-9]+)/gi, '-')
+
+
   version.awsImageAcl ?= @upload.opts.aws.acl
   format = extname(version.path).substr(1).toLowerCase()
 
   options =
-    Key: "#{dest}#{version.suffix or ''}.#{format}"
+    Key: "#{dest}#{version.versionPrefix or ''}#{filename}#{version.suffix or ''}.#{format}"
     ACL: version.awsImageAcl
     Body: fs.createReadStream version.path
     ContentType: "image/#{if format is 'jpg' then 'jpeg' else format}"
